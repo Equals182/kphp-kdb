@@ -82,6 +82,8 @@ string f$ltrim (const string &s, const string &what = WHAT);
 
 string f$mysql_escape_string (const string &str);
 
+string f$mysql_real_escape_string (const string &str);
+
 string f$nl2br (const string &str, bool is_xhtml = true);
 
 inline string f$number_format (double number, int decimals = 0);

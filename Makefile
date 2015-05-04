@@ -20,7 +20,7 @@ PROFC	=	-pg -DDEBUG=1
 OPT	=
 else
 PROF	=
-OPT	=	-O3
+OPT	=	-O2
 endif
 
 # CWARN = -Wall -Werror

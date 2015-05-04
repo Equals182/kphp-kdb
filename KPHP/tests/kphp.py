@@ -117,7 +117,7 @@ def get_dest():
   return dest
 
 def run_make (args = []):
-  check_call ("make -C %s -sj30" % root_path + " " + " ".join (args), shell = True)
+  check_call ("make -C %s -sj30 -j6" % root_path + " " + " ".join (args), shell = True)
 
 def run_parser():
   run_parser_cmd = " ".join ([
@@ -139,6 +139,7 @@ def run_cpp(use_net = False):
   run_cpp_cmd = " ".join ([
                     "nice -n19 make",
                     "-sj30",
+                    "-j6",
                     "-k",
                     "-f", kphp_makefile_path,
                     "-C", get_tmp_dir(),
@@ -174,6 +175,7 @@ def link_as_server():
   global p;
   link_cmd = " ".join ([
                  "g++",
+                 "-j6",
                  "-pg" if p else "",
                  root_objs_path + "KPHP/php-engine_.o",
                  "-lm -lz -lpthread -lrt -lcrypto -ggdb -rdynamic -lpcre -lre2",

@@ -625,6 +625,27 @@ string f$mysql_escape_string (const string &str) {
   return static_SB.str();
 }
 
+string f$mysql_real_escape_string (const string &str) {
+  int len = str.size();
+  static_SB.clean().reserve (2 * len);
+  for (int i = 0; i < len; i++) {
+    switch (str[i]) {
+      case '\0':
+      case '\n':
+      case '\r':
+      case 26:
+      case '\'':
+      case '\"':
+      case '\\':
+        static_SB.append_char ('\\');
+        //no break
+      default:
+        static_SB.append_char (str[i]);
+    }
+  }
+  return static_SB.str();
+}
+
 string f$nl2br (const string &str, bool is_xhtml) {
   const char *br = is_xhtml ? "<br />" : "<br>";
   int br_len = (int)strlen (br);

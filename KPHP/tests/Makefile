@@ -25,12 +25,12 @@ PROFC	=	-pg -DDEBUG=1
 OPT	=
 else
 PROF	=
-OPT	=	-fno-exceptions -Os
+OPT	=	-fno-exceptions -O2
 endif
 
 KPHP_DIR:=$(CURDIR)
 CFLAGS = -Wall -Wno-parentheses -Wno-trigraphs ${OPT} ${MF} -ggdb -march=core2 -mfpmath=sse -mssse3 -fno-strict-aliasing -fno-strict-overflow -fwrapv -fno-omit-frame-pointer ${PROFC}
-LDFLAGS = ${MF} -lm -lz -lpthread -lrt -lcrypto -lpcre -lre2 -ggdb -rdynamic ${PROF}
+LDFLAGS = ${MF} -lm -lz -lpthread -lrt -lcrypto -lpcre -lre2 -lcurl -ggdb -rdynamic ${PROF}
 
 CINCLUDE	= -iquote $(SRC)/KPHP -iquote $(SRC)/drinkless -iquote $(SRC)/common -iquote $(KPHP_DIR)/kphp
 KPHP_OBJ := objs

@@ -45,7 +45,7 @@
  *
  */
 
-#define	SERVER_VERSION	"nginx/0.2.39"
+#define	SERVER_VERSION	"nginx/1.7.8"
 
 extern int verbosity;
 

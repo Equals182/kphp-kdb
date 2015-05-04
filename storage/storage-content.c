@@ -28,7 +28,7 @@
 
 #include <string.h>
 #include "storage-content.h"
-#include "TL/constants.h"
+#include "/usr/local/src/kphp-kdb/objs/TL/constants.h"
 
 char *ContentTypes[] = {
   "image/jpeg",
