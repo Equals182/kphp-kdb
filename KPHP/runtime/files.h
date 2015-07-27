@@ -28,8 +28,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <curl/curl.h>
-#include <string>
 
 #include "kphp_core.h"
 
@@ -63,11 +61,6 @@ bool f$copy (const string &from, const string &to);
 string f$dirname (const string &name);
 
 OrFalse <array <string> > f$file (const string &name);
-
-// curl
-OrFalse <string> f$requests (const string &url, const string &post,
-	const string &cookies, const string &ua, const string &referer);
-
 
 OrFalse <string> f$file_get_contents (const string &name);
 

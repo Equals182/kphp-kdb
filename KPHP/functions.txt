@@ -402,7 +402,7 @@ function function_exists ($func_name ::: Any) ::: bool;
 
 
 # curl
-function requests ($url ::: string, $post ::: string, $cookies ::: string, $ua ::: string, $referer ::: string) ::: OrFalse <string>;
+function requests ($url ::: string, $post ::: string, $headers ::: array) ::: OrFalse <string>;
 
 function basename ($name ::: string, $suffix ::: string = '') ::: string;
 function chmod ($name ::: string, $mode ::: int) ::: bool;
