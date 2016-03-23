@@ -18,10 +18,7 @@
     that compiling, linking, and/or using OpenSSL is allowed.
     You are free to remove this exemption from derived works.
 
-    Copyright 2012-2013 Vkontakte Ltd
-              2012-2013 Arseny Smirnov
-              2012-2013 Aliaksei Levin
-                   2015 Alexander Rizaev
+    Copyright 2016 Equals182
 */
 
 #pragma once
@@ -32,4 +29,4 @@
 
 #include "kphp_core.h"
 
-OrFalse <string> f$requests (const string &url, const string &post, const array<string>& headers, const array <var, var> &extras);
+OrFalse<string> f$couchbase (const array <var, var> &credentials, const string &n1ql);

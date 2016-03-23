@@ -28,6 +28,7 @@
 #include "runtime/array_functions.h"
 #include "runtime/bcmath.h"
 #include "runtime/curl.h"
+#include "runtime/couchbase.h"
 #include "runtime/datetime.h"
 #include "runtime/drivers.h"
 #include "runtime/exception.h"

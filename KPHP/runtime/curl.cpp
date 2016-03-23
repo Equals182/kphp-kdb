@@ -25,17 +25,20 @@
 */
 
 #include <curl/curl.h>
+#include <typeinfo>
 
 #include "curl.h"
 #include "interface.h"
 #include "string_functions.h"
+#include "array.h"
+#include "array_functions.h"
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
 
-OrFalse<string> f$requests(const string &url, const string &post, const array<string>& headers) {
+OrFalse<string> f$requests(const string &url, const string &post, const array<string>& headers, const array <var, var> &extras) {
     CURL *curl;
     CURLcode res;
     std::string readBuffer;
@@ -46,8 +49,9 @@ OrFalse<string> f$requests(const string &url, const string &post, const array<st
         const char* c;
         string str;
         struct curl_slist* _headers = NULL;
+        char errbuf[CURL_ERROR_SIZE];
 
-         for (array<string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+        for (array<string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
             str = it.get_value();
             c = str.c_str();
             _headers = curl_slist_append(_headers, c);
@@ -56,6 +60,35 @@ OrFalse<string> f$requests(const string &url, const string &post, const array<st
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, _headers);
+        
+        for (array <var, var>::const_iterator it = extras.begin(); it != extras.end(); ++it) {
+            const char* key = it.get_key().to_string().c_str();
+            const var &value = it.get_value();
+
+            if (strcmp((char*)("CURLOPT_SSLCERT"), key) == 0) {
+                curl_easy_setopt(curl, CURLOPT_SSLCERT, value.to_string().c_str());
+            }
+            if (strcmp((char*)("CURLOPT_SSLKEY"), key) == 0) {
+                curl_easy_setopt(curl, CURLOPT_SSLKEY, value.to_string().c_str());
+            }
+            if (strcmp((char*)("CURLOPT_KEYPASSWD"), key) == 0) {
+                curl_easy_setopt(curl, CURLOPT_KEYPASSWD, value.to_string().c_str());
+            }
+            if (strcmp((char*)("CURLOPT_STDERR"), key) == 0) {
+                FILE *filep = fopen(value.to_string().c_str(), "wb");
+                curl_easy_setopt(curl, CURLOPT_STDERR, filep);
+            }
+            if (strcmp((char*)("CURLOPT_VERBOSE"), key) == 0) {
+                curl_easy_setopt(curl, CURLOPT_VERBOSE, value.to_int());
+            }
+            if (strcmp((char*)("CURLOPT_SSL_VERIFYPEER"), key) == 0) {
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, value.to_int());
+            }
+            if (strcmp((char*)("CURLOPT_SSL_VERIFYHOST"), key) == 0) {
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, value.to_int());
+            }
+            
+        }
 
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
@@ -67,7 +100,18 @@ OrFalse<string> f$requests(const string &url, const string &post, const array<st
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
         }
 
+        errbuf[0] = 0;
         res = curl_easy_perform(curl);
+        
+        if(res != CURLE_OK) {
+            size_t len = strlen(errbuf);
+            fprintf(stderr, "\nlibcurl: (%d) ", res);
+            if(len)
+                fprintf(stderr, "%s%s", errbuf,
+                    ((errbuf[len - 1] != '\n') ? "\n" : ""));
+            else
+                fprintf(stderr, "%s\n", curl_easy_strerror(res));
+        }
 
         static_SB.clean();
 

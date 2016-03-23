@@ -102,3 +102,4 @@ struct php_immediate_stats immediate_stats = {
 int sql_target_id = -1;
 int in_ready = 0;
 int script_timeout = 30;
+int php_script_timeout = 30;

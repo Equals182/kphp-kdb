@@ -1547,7 +1547,7 @@ int hts_func_execute (struct connection *c, int op) {
       qPostLen, D->query_type == htqt_get ? "GET" : "POST", D->query_flags & QF_KEEPALIVE, c->remote_ip, c->remote_port);
 
   static long long http_script_req_id = 0;
-  php_worker *worker = php_worker_create (http_worker, c, http_data, NULL, script_timeout, ++http_script_req_id);
+  php_worker *worker = php_worker_create (http_worker, c, http_data, NULL, php_script_timeout, ++http_script_req_id);
   D->extra = worker;
 
   int res = php_worker_main (worker);
@@ -3521,10 +3521,10 @@ int main_args_default_handler (int i) {
   return 1;
 }
 
-#define ARGS_STR "D:E:H:r:w:f:p:s:T:t:A:oq"
+#define ARGS_STR "D:E:H:r:w:f:p:s:T:t:A:P:oq"
 
 void usage_params (void) {
-  printf ("[-H<port>] [-r<rpc_port>] [-w<host>:<port>] [-q] [f<workers_n>] [-D<key>=<value>] [-o] [-p<master_port>] [-s<cluster_name>] [-T<tl_config_file_name>] [-t<script_time_limit>]");
+  printf ("[-H<port>] [-r<rpc_port>] [-w<host>:<port>] [-q] [f<workers_n>] [-D<key>=<value>] [-o] [-p<master_port>] [-s<cluster_name>] [-T<tl_config_file_name>] [-t<script_time_limit>] [-P<php_script_time_limit>]");
 }
 
 void usage_desc (void) {
@@ -3540,6 +3540,7 @@ void usage_desc (void) {
     "\t-s<cluster_name>\tused to distinguish clusters\n"
     "\t-T<tl_config_file_name>\tname of file with TL config\n"
     "\t-t<script_time_limit>\ttime limit for script in seconds\n"
+    "\t-P<php_script_time_limit>\ttime limit for php script in seconds\n"
     "\t-A<db_user:db_pass@db_name>\tconfig for mysql access\n"
     );
 }
@@ -3621,6 +3622,9 @@ int main_args_handler (int i) {
     if (script_timeout > MAX_SCRIPT_TIMEOUT) {
       script_timeout = MAX_SCRIPT_TIMEOUT;
     }
+    break;
+  case 'P':
+    php_script_timeout = atoi (optarg);
     break;
   case 'o':
     run_once = 1;

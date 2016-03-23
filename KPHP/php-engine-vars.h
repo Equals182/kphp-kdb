@@ -119,6 +119,7 @@ extern php_immediate_stats_t immediate_stats;
 extern int sql_target_id;
 extern int in_ready;
 extern int script_timeout;
+extern int php_script_timeout;
 
 #define RPC_INVOKE_KPHP_REQ 0x99a37fda
 #define RPC_INVOKE_REQ 0x2374df3d
