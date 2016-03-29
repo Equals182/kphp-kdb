@@ -23,20 +23,12 @@
 
 #include <libcouchbase/couchbase.h>
 #include <libcouchbase/n1ql.h>
-#include <libcouchbase/api3.h>
 #include <string.h>
 #include <stdlib.h>
-#include <typeinfo>
 
 #include "couchbase.h"
 
 #include "kphp_core.h"
-
-#include "interface.h"
-#include "misc.h"
-#include "string_functions.h"
-#include "array.h"
-#include "array_functions.h"
 #include "regexp.h"
 
 extern std::string rows;
@@ -45,19 +37,26 @@ std::string rows;
 std::string meta;
 
 static void rowCallback(lcb_t instance, int cbtype, const lcb_RESPN1QL *resp) {
+    if (resp->rc != LCB_SUCCESS) {
+        fprintf(stderr, "N1QL request failed!: %s\n", lcb_strerror(instance, resp->rc));
+    }
     static const char *regexp = "~\\n(\\s+)?~";
     const string regexpstr = string(regexp, (dl::size_type)(strlen (regexp)));
     const string response = f$preg_replace(regexpstr, string("", 0), string(resp->row, (int)resp->nrow).to_string()).to_string();
     
     if (! (resp->rflags & LCB_RESP_F_FINAL)) {
         //row
-        rows.append(response.c_str());
         //rows.append(string(",", 1));
+        //fprintf(stderr, "ROW: %s\n", response.c_str());
+        rows.append(response.c_str());
         rows.push_back(',');
     } else {
         //meta
+        //fprintf(stderr, "META: %s\n", response.c_str());
         meta.append(response.c_str());
     }
+    /*
+    */
 }
 
 OrFalse<string> f$couchbase(const array <var, var> &credentials, const string &n1ql) {
@@ -68,7 +67,7 @@ OrFalse<string> f$couchbase(const array <var, var> &credentials, const string &n
     rows.clear();
     meta.clear();
     
-    fprintf(stderr, "WAT: %s\n", meta.c_str());
+    //fprintf(stderr, "WAT: %s\n", n1ql.c_str());
 
     struct lcb_create_st create_options;
     
@@ -102,7 +101,6 @@ OrFalse<string> f$couchbase(const array <var, var> &credentials, const string &n
         create_options.v.v3.passwd = password;
     }
     create_options.v.v3.connstr = conn;
-    fprintf(stderr, "Connection: %s\n", conn);
     
     err = lcb_create(&instance, &create_options);
     if (err != LCB_SUCCESS) {
@@ -126,39 +124,49 @@ OrFalse<string> f$couchbase(const array <var, var> &credentials, const string &n
     }
     
     lcb_CMDN1QL cmd;
-    lcb_N1QLPARAMS *nparams = lcb_n1p_new();
 
     const char *querystr = n1ql.to_string().c_str();
     cmd.query = querystr;
     cmd.nquery = strlen(querystr);
     cmd.callback = rowCallback;
     
-    lcb_error_t rc = lcb_n1ql_query(instance, NULL, &cmd);
-    if (rc != LCB_SUCCESS) {
+    err = lcb_n1ql_query(instance, NULL, &cmd);
+    if (err != LCB_SUCCESS) {
         // OOPS!
-        fprintf(stderr, "Fail: %s\n", "wat");
+        //fprintf(stderr, "Fail: %s\n", "wat");
         php_warning ("Query wasnt successful");
         return false;
     }
     // We can release the params object now..
-    lcb_n1p_free(nparams);
     lcb_wait(instance);
     lcb_destroy(instance);
-
-    rows = rows.substr(0, rows.size() - 1);
     
-    static_SB.clean();
+    if ((int)strlen(rows.c_str()) > 0) {
+        rows = rows.substr(0, rows.size() - 1);
+    }
+    
     int r_len = strlen(rows.c_str());
     int m_len = strlen(meta.c_str());
     
     int len = r_len + 19 + m_len;
     
+    static_SB.clean();
     static_SB.reserve(len + 1);
     static_SB.append_unsafe((char*)"{\"rows\":[", 9);
-    static_SB.append_unsafe(rows.c_str(), r_len);
+    if ((int)strlen(rows.c_str()) > 0) {
+        static_SB.append_unsafe(rows.c_str(), r_len);
+    }
     static_SB.append_unsafe("],\"meta\":", 9);
     static_SB.append_unsafe(meta.c_str(), m_len);
     static_SB.append_unsafe("}", 1);
+    
+    rows.clear();
+    meta.clear();
+    /*
+    */
+    
+    //delete[] cmd;
+    //delete[] ;
     
     return static_SB.str();
     /*

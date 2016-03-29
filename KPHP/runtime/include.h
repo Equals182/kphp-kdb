@@ -179,8 +179,8 @@ void php_warning (char const *message, ...) {
 
 void php_assert__ (const char *msg, const char *file, int line) {
   php_warning ("Assertion \"%s\" failed in file %s on line %d", msg, file, line);
-  raise (SIGUSR2);
   fprintf (stderr, "_exiting in php_assert\n");
+  raise (SIGUSR2);
   _exit (1);
 }
 

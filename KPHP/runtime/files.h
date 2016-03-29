@@ -96,6 +96,8 @@ extern const MyFile STDERR;
 
 MyFile f$fopen (const string &filename, const string &mode);
 
+OrFalse <string> f$fgets (const MyFile &file, int length = 1000);
+
 OrFalse <int> f$fwrite (const MyFile &file, const string &text);
 
 int f$fseek (const MyFile &file, int offset, int whence = 0);
@@ -111,7 +113,6 @@ OrFalse <int> f$fpassthru (const MyFile &file);
 bool f$fflush (const MyFile &file);
 
 bool f$fclose (const MyFile &file);
-
 
 void files_init_static (void);
 

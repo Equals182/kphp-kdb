@@ -567,6 +567,7 @@ define (SEEK_END, 1);
 define (SEEK_CUR, 2);
 
 function fopen ($filename ::: string, $mode ::: string);
+function fgets ($file, $length ::: int = 1000) ::: OrFalse <string>;
 function fwrite ($file, $text ::: string) ::: OrFalse <int>;
 function fseek ($file, $offset ::: int, $whence ::: int = SEEK_SET) ::: int;
 function rewind ($file) ::: bool;

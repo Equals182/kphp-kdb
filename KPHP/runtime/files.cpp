@@ -592,6 +592,36 @@ MyFile f$fopen (const string &filename, const string &mode) {
   }
 }
 
+OrFalse <string> f$fgets (const MyFile &file, int length) {
+  if (eq2 (file, STDOUT) || eq2 (file, STDERR)) {
+    php_warning ("Can't use fread with STDERR and STDOUT\n");
+    return false;
+  }
+  
+  OrFalse <string> filename_or_false = full_realpath (file.to_string());
+  if (!f$boolval (filename_or_false)) {
+    php_warning ("Wrong file \"%s\" specified", file.to_string().c_str());
+    return false;
+  }
+  
+  string filename = filename_or_false.val();
+  if (dl::query_num == opened_files_last_query_num && opened_files->has_key (filename)) {
+    FILE *f = opened_files->get_value (filename);
+    char output [length];
+    
+    if ( fgets (output , length , f) != NULL ) {
+      string str = string(output, (dl::size_type)strlen (output));
+      return str;
+    } else {
+      fprintf(stderr, "fail: %s\n", output);
+      return false;
+    }
+  } else {
+    php_warning ("File \"%s\" is not opened\n", filename.c_str());
+    return false;
+  }
+}
+
 OrFalse <int> f$fwrite (const MyFile &file, const string &text) {
   if (eq2 (file, STDOUT)) {
     *coub += text;
@@ -816,7 +846,6 @@ bool f$fclose (const MyFile &file) {
   }
   return false;
 }
-
 
 void files_init_static (void) {
   opened_fd = -1;
