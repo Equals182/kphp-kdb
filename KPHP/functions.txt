@@ -404,8 +404,11 @@ function function_exists ($func_name ::: Any) ::: bool;
 
 # curl
 function requests ($url ::: string, $post ::: string, $headers ::: array, $extras ::: array) ::: OrFalse <string>;
+function multi_requests ($parameters ::: array) ::: OrFalse <array <var> >;
 
-function couchbase ($credentials ::: array, $n1ql ::: string = "") ::: OrFalse <string>;
+//function cbN1QL ($credentials ::: array, $n1ql ::: string = "") ::: OrFalse <string>;
+//function cbADD ($credentials ::: array, $data ::: array, $wait ::: bool = true) ::: OrFalse <array <var> >;
+//function cbDestroy ($credentials ::: array) ::: bool;
 
 function basename ($name ::: string, $suffix ::: string = '') ::: string;
 function chmod ($name ::: string, $mode ::: int) ::: bool;

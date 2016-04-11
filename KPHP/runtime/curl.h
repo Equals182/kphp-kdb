@@ -33,3 +33,5 @@
 #include "kphp_core.h"
 
 OrFalse <string> f$requests (const string &url, const string &post, const array<string>& headers, const array <var, var> &extras);
+
+OrFalse< array<var, var> > f$multi_requests(const array <var, var> &parameters);

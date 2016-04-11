@@ -613,7 +613,7 @@ OrFalse <string> f$fgets (const MyFile &file, int length) {
       string str = string(output, (dl::size_type)strlen (output));
       return str;
     } else {
-      fprintf(stderr, "fail: %s\n", output);
+      //fprintf(stderr, "fail to fgets: %s\n", output);
       return false;
     }
   } else {

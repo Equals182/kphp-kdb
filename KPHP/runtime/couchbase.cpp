@@ -24,7 +24,9 @@
 #include <libcouchbase/couchbase.h>
 #include <libcouchbase/n1ql.h>
 #include <string.h>
+#include <vector>
 #include <stdlib.h>
+#include <map>
 
 #include "couchbase.h"
 
@@ -59,40 +61,42 @@ static void rowCallback(lcb_t instance, int cbtype, const lcb_RESPN1QL *resp) {
     */
 }
 
-OrFalse<string> f$couchbase(const array <var, var> &credentials, const string &n1ql) {
-    
-    lcb_error_t err;
-    lcb_t instance;
-    
-    rows.clear();
-    meta.clear();
-    
-    //fprintf(stderr, "WAT: %s\n", n1ql.c_str());
+extern std::map<char*,lcb_t> cbConnections;
+std::map<char*,lcb_t> cbConnections;
 
+static bool cbConnect(const array <var, var> &credentials, lcb_t &instance, lcb_error_t &err) {
+    
     struct lcb_create_st create_options;
     
     char * link = (char * )("couchbase://localhost:8091");
     char * bucket = (char * )("default");
     char * password = (char * )("");
     
+    string key;
+    string value; // = string("", 0)
     for (array <var, var>::const_iterator it = credentials.begin(); it != credentials.end(); ++it) {
-        const char * key = it.get_key().to_string().c_str();
-        const var &value = it.get_value();
+        key = it.get_key().to_string();
+        value = it.get_value().to_string();
         
-        if (strcmp((char*)("link"), key) == 0) {
-            link = strdup(value.to_string().c_str());
+        if (strcmp((char*)("link"), key.c_str()) == 0) {
+            link = strdup(value.c_str());
         }
-        if (strcmp((char*)("bucket"), key) == 0) {
-            bucket = strdup(value.to_string().c_str());
+        if (strcmp((char*)("bucket"), key.c_str()) == 0) {
+            bucket = strdup(value.c_str());
         }
-        if (strcmp((char*)("password"), key) == 0) {
-            password = strdup(value.to_string().c_str());
+        if (strcmp((char*)("password"), key.c_str()) == 0) {
+            password = strdup(value.c_str());
         }
     }
     
     char * conn = link;
     strcat(conn, (char * )"/");
     strcat(conn, (char * )strdup(bucket));
+    
+    if (cbConnections.count(conn) > 0) {
+        instance = cbConnections.find(conn)->second;
+        return true;
+    }
     
     memset(&create_options, 0, sizeof(create_options));
     create_options.version = 3;
@@ -123,6 +127,53 @@ OrFalse<string> f$couchbase(const array <var, var> &credentials, const string &n
         return false;
     }
     
+    cbConnections.insert( std::pair<char*,lcb_t>(conn,instance) );
+    return true;
+}
+
+bool f$cbDestroy(const array <var, var> &credentials) {
+    
+    char * link = (char * )("couchbase://localhost:8091");
+    char * bucket = (char * )("default");
+    
+    string key;
+    string value; // = string("", 0)
+    for (array <var, var>::const_iterator it = credentials.begin(); it != credentials.end(); ++it) {
+        key = it.get_key().to_string();
+        value = it.get_value().to_string();
+        
+        if (strcmp((char*)("link"), key.c_str()) == 0) {
+            link = strdup(value.c_str());
+        }
+        if (strcmp((char*)("bucket"), key.c_str()) == 0) {
+            bucket = strdup(value.c_str());
+        }
+    }
+    
+    char * conn = link;
+    strcat(conn, (char * )"/");
+    strcat(conn, (char * )strdup(bucket));
+    
+    if (cbConnections.count(conn) > 0) {
+        lcb_destroy(cbConnections.find(conn)->second);
+        cbConnections.erase(conn);
+        return true;
+    }
+    return false;
+}
+
+OrFalse<string> f$cbN1QL(const array <var, var> &credentials, const string &n1ql) {
+    
+    rows.clear();
+    meta.clear();
+    
+    lcb_error_t err;
+    lcb_t instance;
+    
+    if (!cbConnect(credentials, instance, err)) {
+        return false;
+    }
+    
     lcb_CMDN1QL cmd;
 
     const char *querystr = n1ql.to_string().c_str();
@@ -133,7 +184,7 @@ OrFalse<string> f$couchbase(const array <var, var> &credentials, const string &n
     err = lcb_n1ql_query(instance, NULL, &cmd);
     if (err != LCB_SUCCESS) {
         // OOPS!
-        //fprintf(stderr, "Fail: %s\n", "wat");
+        fprintf(stderr, "Fail: %s\n", lcb_strerror(NULL, err));
         php_warning ("Query wasnt successful");
         return false;
     }
@@ -162,8 +213,6 @@ OrFalse<string> f$couchbase(const array <var, var> &credentials, const string &n
     
     rows.clear();
     meta.clear();
-    /*
-    */
     
     //delete[] cmd;
     //delete[] ;
@@ -172,4 +221,81 @@ OrFalse<string> f$couchbase(const array <var, var> &credentials, const string &n
     /*
     return false;
     */
+}
+
+struct Result {
+    lcb_error_t rc;
+    string key;
+    string value;
+    lcb_CAS cas;
+};
+extern std::vector<Result> results;
+std::vector<Result> results;
+static void add_cb(lcb_t, int cbtype, const lcb_RESPBASE *rb)
+{
+    Result res;
+    res.rc = rb->rc;
+    res.key = string((const char *)rb->key, rb->nkey);
+    res.cas = rb->cas;
+    
+    if (cbtype == LCB_CALLBACK_GET && rb->rc == LCB_SUCCESS) {
+        const lcb_RESPGET *rg = reinterpret_cast<const lcb_RESPGET*>(rb);
+        res.value = string((const char *)rg->value, rg->nvalue);
+    }
+    results.push_back(res);
+}
+
+OrFalse< array <var, var> > f$cbADD(const array <var, var> &credentials, const array <string, string> &data, const bool &wait) {
+    
+    lcb_error_t err;
+    lcb_t instance;
+    
+    if (!cbConnect(credentials, instance, err)) {
+        return false;
+    }
+    
+    lcb_install_callback3(instance, LCB_CALLBACK_STORE, add_cb);
+    
+    lcb_sched_enter(instance);
+    
+    for (array <string, string>::const_iterator it = data.begin(); it != data.end(); ++it) {
+        lcb_CMDSTORE scmd = { 0 };
+        LCB_CMD_SET_KEY(&scmd, it.get_key().to_string().c_str(), it.get_key().to_string().size());
+        LCB_CMD_SET_VALUE(&scmd, it.get_value().to_string().c_str(), it.get_value().to_string().size());
+        scmd.operation = LCB_SET;
+        err = lcb_store3(instance, &results, &scmd);
+        if (err != LCB_SUCCESS) {
+            fprintf(stderr, "Couldn't schedule item %s: %s\n",
+                it.get_key().to_string().c_str(), lcb_strerror(NULL, err));
+
+            // Unschedules all operations since the last scheduling context
+            // (created by lcb_sched_enter)
+            lcb_sched_fail(instance);
+            break;
+        }
+    }
+    
+    lcb_sched_leave(instance);
+    
+    if (wait) {
+        lcb_wait(instance);
+        array <var, var> res;
+        for (std::vector<Result>::const_iterator it = results.begin(); it != results.end(); ++it) {
+            printf("%s: ", it->key.c_str());
+            if (it->rc != LCB_SUCCESS) {
+                printf("Failed (%s)\n", lcb_strerror(NULL, it->rc));
+                res.set_value((*it).key, false);
+            } else {
+                printf("Stored. CAS=%lu\n", it->cas);
+                res.set_value((*it).key, true);
+            }
+        }
+
+        //lcb_destroy(instance);
+        return res;
+    } else {
+        lcb_wait3(instance, LCB_WAIT_NOCHECK);
+        //lcb_destroy(instance);
+        return false;
+    }
 }

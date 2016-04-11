@@ -29,4 +29,7 @@
 
 #include "kphp_core.h"
 
-OrFalse<string> f$couchbase (const array <var, var> &credentials, const string &n1ql);
+OrFalse<string> f$cbN1QL (const array <var, var> &credentials, const string &n1ql);
+
+OrFalse< array<var, var> > f$cbADD(const array <var, var> &credentials, const array <string, string> &data, const bool &wait);
+bool f$cbDestroy(const array <var, var> &credentials);

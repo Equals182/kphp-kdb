@@ -25,7 +25,10 @@
 */
 
 #include <curl/curl.h>
+#include <curl/multi.h>
 #include <typeinfo>
+#include <stdlib.h>
+#include <map>
 
 #include "curl.h"
 #include "interface.h"
@@ -126,4 +129,163 @@ OrFalse<string> f$requests(const string &url, const string &post, const array<st
     }
 
     return static_SB.str();
+}
+
+extern std::map<char*, std::string> mcurl_results;
+std::map<char*, std::string> mcurl_results;
+
+static size_t multi_cb(char *d, size_t n, size_t l, void *p)
+{
+    /* take care of the data here, ignored in this example */
+    ((std::string*)p)->append(d);
+    return n*l;
+}
+
+static void init_one(CURLM *cm, var parameters) {
+    const array <var,var> &p = parameters.to_array();
+    if (p.isset(string("url", 3))) {
+        CURL *eh = curl_easy_init();
+        const string &url_string = p.get_value(string("url", 3)).to_string();
+        const char *url = url_string.c_str();
+        
+        curl_easy_setopt(eh, CURLOPT_URL, url);
+        
+        if (p.isset(string("headers", 7))) {
+            struct curl_slist* _headers = NULL;
+            const array <var, var> &headers = p.get_value(string("headers", 7)).to_array();
+            for (array <var, var>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+                _headers = curl_slist_append(_headers, it.get_value().to_string().c_str());
+            }
+            curl_easy_setopt(eh, CURLOPT_HTTPHEADER, _headers);
+        }
+        if (p.isset(string("private", 7))) {
+            if (p.get_value(string("private", 7)).is_bool() == true && p.get_value(string("private", 7)).to_bool() == true) {
+                curl_easy_setopt(eh, CURLOPT_PRIVATE, url);
+            } else if (p.get_value(string("private", 7)).is_string() == true) {
+                curl_easy_setopt(eh, CURLOPT_PRIVATE, p.get_value(string("private", 7)).to_string().c_str());
+            }
+        }
+        if (p.isset(string("data", 4))) {
+            curl_easy_setopt(eh, CURLOPT_POST, 1);
+            curl_easy_setopt(eh, CURLOPT_POSTFIELDS, p.get_value(string("data", 4)).to_string().c_str());
+        }
+        if (p.isset(string("timeout", 7))) {
+            curl_easy_setopt(eh, CURLOPT_TIMEOUT, p.get_value(string("timeout", 7)).to_int());
+        }
+        if (p.isset(string("sslcert", 7))) {
+            curl_easy_setopt(eh, CURLOPT_SSLCERT, p.get_value(string("sslcert", 7)).to_string().c_str());
+        }
+        if (p.isset(string("sslkey", 6))) {
+            curl_easy_setopt(eh, CURLOPT_SSLKEY, p.get_value(string("sslkey", 6)).to_string().c_str());
+        }
+        if (p.isset(string("keypasswd", 9))) {
+            curl_easy_setopt(eh, CURLOPT_KEYPASSWD, p.get_value(string("keypasswd", 9)).to_string().c_str());
+        }
+        if (p.isset(string("stderr", 6))) {
+            FILE *filep = fopen(p.get_value(string("stderr", 6)).to_string().c_str(), "wb");
+            curl_easy_setopt(eh, CURLOPT_STDERR, filep);
+        }
+        if (p.isset(string("verbose", 7)) && p.get_value(string("verbose", 7)).is_bool() == true) {
+            if (p.get_value(string("verbose", 7)).to_bool() == true) {
+                curl_easy_setopt(eh, CURLOPT_VERBOSE, 1);
+            } else {
+                curl_easy_setopt(eh, CURLOPT_VERBOSE, 0);
+            }
+        }
+        if (p.isset(string("ssl_verifypeer", 14)) && p.get_value(string("ssl_verifypeer", 14)).is_bool() == true) {
+            if (p.get_value(string("ssl_verifypeer", 14)).to_bool() == true) {
+                curl_easy_setopt(eh, CURLOPT_SSL_VERIFYPEER, 1);
+            } else {
+                curl_easy_setopt(eh, CURLOPT_SSL_VERIFYPEER, 0);
+            }
+        }
+        if (p.isset(string("ssl_verifyhost", 14)) && p.get_value(string("ssl_verifyhost", 14)).is_bool() == true) {
+            if (p.get_value(string("ssl_verifyhost", 14)).to_bool() == true) {
+                curl_easy_setopt(eh, CURLOPT_SSL_VERIFYHOST, 1);
+            } else {
+                curl_easy_setopt(eh, CURLOPT_SSL_VERIFYHOST, 0);
+            }
+        }
+        char *_key = strdup(url);
+        if (p.isset(string("id", 2))) {
+            _key = strdup(p.get_value(string("id", 2)).to_string().c_str());
+        }
+        fprintf(stderr, "id: %s\n", _key);
+        if(mcurl_results.count(_key) < 1) {
+            mcurl_results.insert( std::pair<char*,std::string>(_key,(std::string)"") );
+            curl_easy_setopt(eh, CURLOPT_WRITEFUNCTION, multi_cb);
+            curl_easy_setopt(eh, CURLOPT_WRITEDATA, &mcurl_results[_key]);
+        }
+        
+        curl_multi_add_handle(cm, eh);
+    }
+}
+
+OrFalse< array<var, var> > f$multi_requests(const array <var, var> &parameters) {
+    CURLM *cm=NULL;
+    CURL *eh=NULL;
+    CURLMsg *msg=NULL;
+    CURLcode return_code;
+    int still_running=0, msgs_left=0;
+    int http_status_code;
+    const char *szUrl;
+    const int max_wait_time = 30*1000;
+    
+    curl_global_init(CURL_GLOBAL_ALL);
+
+    cm = curl_multi_init();
+    
+    for (array <var, var>::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
+        init_one(cm, it.get_value());
+    }
+    
+    curl_multi_perform(cm, &still_running);
+    do {
+        int numfds=0;
+        int res = curl_multi_wait(cm, NULL, 0, max_wait_time, &numfds);
+        if (res != CURLM_OK) {
+            fprintf(stderr, "error: curl_multi_wait() returned %d\n", res);
+            return false;
+        }
+        curl_multi_perform(cm, &still_running);
+    } while(still_running);
+    
+    while ((msg = curl_multi_info_read(cm, &msgs_left))) {
+        if (msg->msg == CURLMSG_DONE) {
+            eh = msg->easy_handle;
+
+            return_code = msg->data.result;
+            if (return_code!=CURLE_OK) {
+                fprintf(stderr, "CURL error code: %d\n", msg->data.result);
+                continue;
+            }
+
+            // Get HTTP status code
+            http_status_code=0;
+            szUrl = NULL;
+
+            curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &http_status_code);
+            curl_easy_getinfo(eh, CURLINFO_PRIVATE, &szUrl);
+
+            if (http_status_code==200) {
+                printf("200 OK for %s\n", szUrl);
+            } else {
+                fprintf(stderr, "GET of %s returned http status code %d\n", szUrl, http_status_code);
+            }
+
+            curl_multi_remove_handle(cm, eh);
+            curl_easy_cleanup(eh);
+        }
+        else {
+            fprintf(stderr, "error: after curl_multi_info_read(), CURLMsg=%d\n", msg->msg);
+        }
+    }
+
+    curl_multi_cleanup(cm);
+    
+    array <var, var> multi_response;
+    for (std::map<char*, std::string>::iterator it=mcurl_results.begin(); it!=mcurl_results.end(); ++it) {
+        multi_response.set_value(string(it->first, strlen(it->first)), string((it->second).c_str(), (it->second).size()));
+    }
+    return multi_response;
 }
