@@ -326,7 +326,6 @@ function long2ip ($ip) ::: string;
 
 function get_magic_quotes_gpc() ::: bool;
 function php_sapi_name() ::: string;
-function get_interfaces($ipv6 ::: bool = false) ::: OrFalse <array <string> >;
 
 define_raw ('STR_PAD_LEFT', 0);
 define_raw ('STR_PAD_RIGHT', 1);
@@ -404,7 +403,7 @@ function function_exists ($func_name ::: Any) ::: bool;
 
 # curl
 function requests ($url ::: string, $post ::: string, $headers ::: array, $extras ::: array) ::: OrFalse <string>;
-function multi_requests ($parameters ::: array) ::: OrFalse <array <var> >;
+function multi_requests ($parameters ::: array, $curl_parameters ::: array = array()) ::: OrFalse <array <var> >;
 
 //function cbN1QL ($credentials ::: array, $n1ql ::: string = "") ::: OrFalse <string>;
 //function cbADD ($credentials ::: array, $data ::: array, $wait ::: bool = true) ::: OrFalse <array <var> >;
@@ -649,3 +648,4 @@ function unimplemented_function ($a1 = "", $a2 = "", $a3 = "", $a4 = "", $a5 = "
 
 /** For local usage only **/
 //function system ($query ::: string) ::: int;
+function spwnWrkr () ::: int;

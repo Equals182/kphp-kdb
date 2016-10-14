@@ -134,11 +134,11 @@ OrFalse<string> f$requests(const string &url, const string &post, const array<st
 extern std::map<char*, std::string> mcurl_results;
 std::map<char*, std::string> mcurl_results;
 
-static size_t multi_cb(char *d, size_t n, size_t l, void *p)
-{
+static size_t multi_cb(char *d, size_t n, size_t l, void *p) {
     /* take care of the data here, ignored in this example */
-    ((std::string*)p)->append(d);
-    return n*l;
+    size_t realsize = n * l;
+    ((std::string*)p)->append(d, realsize);
+    return realsize;
 }
 
 static void init_one(CURLM *cm, var parameters) {
@@ -221,7 +221,7 @@ static void init_one(CURLM *cm, var parameters) {
     }
 }
 
-OrFalse< array<var, var> > f$multi_requests(const array <var, var> &parameters) {
+OrFalse< array<var, var> > f$multi_requests(const array <var, var> &parameters, const array <var, var> &curl_parameters) {
     CURLM *cm=NULL;
     CURL *eh=NULL;
     CURLMsg *msg=NULL;
@@ -234,6 +234,60 @@ OrFalse< array<var, var> > f$multi_requests(const array <var, var> &parameters) 
     curl_global_init(CURL_GLOBAL_ALL);
 
     cm = curl_multi_init();
+    
+    for (array <var, var>::const_iterator it = curl_parameters.begin(); it != curl_parameters.end(); ++it) {
+        const char* key = it.get_key().to_string().c_str();
+        const var &value = it.get_value();
+
+        if (strcmp((char*)("CURLMOPT_CHUNK_LENGTH_PENALTY_SIZE"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_CHUNK_LENGTH_PENALTY_SIZE, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_CONTENT_LENGTH_PENALTY_SIZE"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_CONTENT_LENGTH_PENALTY_SIZE, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_MAXCONNECTS"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_MAXCONNECTS, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_MAX_HOST_CONNECTIONS"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_MAX_HOST_CONNECTIONS, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_MAX_PIPELINE_LENGTH"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_MAX_PIPELINE_LENGTH, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_MAX_TOTAL_CONNECTIONS"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_MAX_TOTAL_CONNECTIONS, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_PIPELINING"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_PIPELINING, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_PIPELINING_SERVER_BL"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_PIPELINING_SERVER_BL, value.to_string().c_str());
+        }
+        else if (strcmp((char*)("CURLMOPT_PIPELINING_SITE_BL"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_PIPELINING_SITE_BL, value.to_string().c_str());
+        }
+        /*
+        // NOT DONE!!!! //
+        else if (strcmp((char*)("CURLMOPT_PUSHDATA"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_PUSHDATA, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_PUSHFUNCTION"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_PUSHFUNCTION, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_SOCKETDATA"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_SOCKETDATA, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_SOCKETFUNCTION"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_SOCKETFUNCTION, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_TIMERDATA"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_TIMERDATA, value.to_int());
+        }
+        else if (strcmp((char*)("CURLMOPT_TIMERFUNCTION"), key) == 0) {
+            curl_multi_setopt(cm, CURLMOPT_TIMERFUNCTION, value.to_int());
+        }
+        */
+    }
     
     for (array <var, var>::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
         init_one(cm, it.get_value());
@@ -287,5 +341,6 @@ OrFalse< array<var, var> > f$multi_requests(const array <var, var> &parameters) 
     for (std::map<char*, std::string>::iterator it=mcurl_results.begin(); it!=mcurl_results.end(); ++it) {
         multi_response.set_value(string(it->first, strlen(it->first)), string((it->second).c_str(), (it->second).size()));
     }
+    mcurl_results.clear();
     return multi_response;
 }
