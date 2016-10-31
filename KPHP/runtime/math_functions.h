@@ -33,6 +33,8 @@ string f$dechex (int number);
 
 int f$hexdec (const string &number);
 
+string f$binxor (const string &bin1, const string &bin2);
+
 
 void f$srand (int seed = INT_MIN);
 

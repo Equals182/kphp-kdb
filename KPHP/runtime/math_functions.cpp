@@ -252,3 +252,12 @@ double f$round (double v, int precision) {
   double mul = pow (10.0, (double)precision);
   return round (v * mul) / mul;
 }
+
+string f$binxor (const string &bin1, const string &bin2) {
+  string result;
+  for(unsigned int i = 0; i < bin1.size(); i++) {
+	result.push_back( ((bin1[i]-'0') ^ (bin2[i]-'0')) + '0' ); 
+  }
+  return result;
+  //return f$base_convert(result, 2, 16);;
+}
